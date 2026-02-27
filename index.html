@@ -498,6 +498,22 @@ function savePumpModal() {
     refresh(); toast('Caudales globales actualizados', 'ok');
 }
 
+// ── Guardar datos de la nube en LocalStorage ──
+function saveCloudSettings() {
+    localStorage.setItem('cb_user', document.getElementById('gh-user').value.trim());
+    localStorage.setItem('cb_repo', document.getElementById('gh-repo').value.trim());
+    localStorage.setItem('cb_token', document.getElementById('gh-token').value.trim());
+    document.getElementById('modal-cloud').classList.remove('open');
+    toast('Configuración Cloud guardada en el navegador', 'ok');
+}
+
+// ── Cargar datos al abrir la página ──
+window.addEventListener('DOMContentLoaded', () => {
+    if(localStorage.getItem('cb_user')) document.getElementById('gh-user').value = localStorage.getItem('cb_user');
+    if(localStorage.getItem('cb_repo')) document.getElementById('gh-repo').value = localStorage.getItem('cb_repo');
+    if(localStorage.getItem('cb_token')) document.getElementById('gh-token').value = localStorage.getItem('cb_token');
+});
+
 function openSafety(){
   cs1=false; cs2=false; cs3=false;
   ['cs1','cs2','cs3'].forEach(id=>document.getElementById(id).classList.remove('done'));
