@@ -402,15 +402,15 @@ pre#gen-code{flex:1;overflow:auto;padding:12px;margin:0;font-family:var(--mono);
   <div class="mbox">
     <h3><i class="fa-solid fa-cloud" style="color:#6366f1;margin-right:5px"></i>Configuración Cloud (GitHub)</h3>
     <p style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.6">
-      Ingresa tus credenciales para enviar protocolos al biorreactor de forma remota.
+      Ingresa tus credenciales. Se guardarán en tu navegador de forma segura.
     </p>
     <div style="display:flex;flex-direction:column;gap:8px;">
-      <div class="frow"><span class="flbl">Usuario GitHub</span><input type="text" id="gh-user" class="finp" value="Tronex-54"></div>
-      <div class="frow"><span class="flbl">Repositorio</span><input type="text" id="gh-repo" class="finp" value="ChiBio_Cloud"></div>
-      <div class="frow"><span class="flbl">Token (PAT)</span><input type="password" id="gh-token" class="finp" value="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"></div>
+      <div class="frow"><span class="flbl">Usuario GitHub</span><input type="text" id="gh-user" class="finp" placeholder="Ej: Tronex-54"></div>
+      <div class="frow"><span class="flbl">Repositorio</span><input type="text" id="gh-repo" class="finp" placeholder="Ej: ChiBio_Cloud"></div>
+      <div class="frow"><span class="flbl">Token (PAT)</span><input type="password" id="gh-token" class="finp" placeholder="ghp_..."></div>
     </div>
     <div class="mfooter">
-      <button class="btn btn-accent" onclick="document.getElementById('modal-cloud').classList.remove('open'); toast('Configuración Cloud guardada', 'ok');"><i class="fa-solid fa-check"></i> Guardar</button>
+      <button class="btn btn-accent" onclick="saveCloudSettings()"><i class="fa-solid fa-check"></i> Guardar</button>
     </div>
   </div>
 </div>
