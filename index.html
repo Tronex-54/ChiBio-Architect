@@ -95,6 +95,7 @@ select.tb-sel:focus{border-color:var(--accent);}
 /* ── BLOCKS ──────────────────────────────────────── */
 .cb{background:var(--surface);border:1px solid var(--border);border-radius:9px; overflow:hidden;transition:border-color .15s,box-shadow .15s; flex-shrink: 0;}
 .cb:hover{border-color:var(--border2);box-shadow:0 3px 14px var(--shadow);}
+.cb.selected{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,229,160,.18);}
 .cb.dover{border-color:var(--accent);}
 .cb-hdr{display:flex;align-items:center;gap:7px;padding:8px 11px; border-bottom:1px solid var(--border);}
 .cb-step{width:19px;height:19px;border-radius:50%;background:var(--surface2); border:1px solid var(--border);display:flex;align-items:center;justify-content:center; font-family:var(--mono);font-size:9px;color:var(--text3);flex-shrink:0;}
@@ -185,6 +186,65 @@ pre#gen-code{flex:1;overflow:auto;padding:12px;margin:0;font-family:var(--mono);
 .cstep.done .ccheck{background:var(--accent);border-color:var(--accent);color:#000;}
 .cstep-txt{font-size:11px;line-height:1.5;color:var(--text2);}
 .cstep.done .cstep-txt{color:var(--text);}
+
+/* ── TOOLTIPS (JS-driven, always on top) ─────────── */
+#tooltip-el{
+  position:fixed;z-index:99999;pointer-events:none;
+  background:#131720;border:1px solid var(--border2);color:var(--text2);
+  font-size:11px;line-height:1.55;padding:7px 11px;border-radius:8px;
+  white-space:normal;width:220px;
+  box-shadow:0 4px 20px rgba(0,0,0,.7);
+  font-family:var(--sans);font-weight:400;
+  opacity:0;transition:opacity .15s;
+}
+
+/* ── GUIDED TOUR ─────────────────────────────────── */
+#tour-overlay{position:fixed;inset:0;z-index:8000;display:none;}
+#tour-overlay.active{display:block;}
+/* The spotlight: highlight itself casts the dark shadow outward */
+#tour-highlight{
+  position:fixed;z-index:8002;
+  border-radius:10px;
+  border:2px solid var(--accent);
+  box-shadow:
+    0 0 0 9999px rgba(0,0,0,.72),
+    0 0 20px 2px rgba(0,229,160,.25);
+  transition:left .32s cubic-bezier(.4,0,.2,1),
+             top  .32s cubic-bezier(.4,0,.2,1),
+             width .32s cubic-bezier(.4,0,.2,1),
+             height .32s cubic-bezier(.4,0,.2,1);
+  pointer-events:none;
+  background:transparent;
+}
+/* Clickable backdrop only for "Saltar" on click outside box */
+#tour-backdrop{
+  position:fixed;inset:0;z-index:8001;
+  background:transparent;
+  pointer-events:all;
+  cursor:default;
+}
+#tour-box{
+  position:fixed;z-index:8004;
+  background:var(--surface2);
+  border:1px solid var(--accent);
+  border-radius:12px;
+  padding:18px 20px;
+  width:340px;
+  box-shadow:0 8px 32px rgba(0,0,0,.8);
+  transition:left .32s cubic-bezier(.4,0,.2,1), top .32s cubic-bezier(.4,0,.2,1);
+  pointer-events:all;
+}
+#tour-box h4{font-family:var(--disp);font-size:14px;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+#tour-box p{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:16px;}
+.tour-footer{display:flex;align-items:center;gap:6px;}
+.tour-nav{display:flex;gap:5px;margin-left:auto;}
+.tour-skip{font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 6px;font-family:var(--sans);transition:color .15s;border-radius:4px;}
+.tour-skip:hover{color:var(--text);background:var(--surface3);}
+#tour-btn-prev{opacity:0.6;}
+#tour-btn-prev:hover{opacity:1;}
+
+/* ── EXPORT/IMPORT BAR ───────────────────────────── */
+.io-btns{display:flex;gap:5px;align-items:center;}
 </style>
 </head>
 <body data-theme="dark">
@@ -197,11 +257,11 @@ pre#gen-code{flex:1;overflow:auto;padding:12px;margin:0;font-family:var(--mono);
     <span class="logo-v">Master Architect V6.8</span>
   </div>
   <div class="sep"></div>
-  <button class="btn btn-ghost" onclick="openPumpModal()">
+  <button class="btn btn-ghost" onclick="openPumpModal()" data-tip="Calibra el caudal real (ml/min) de cada bomba para calcular volúmenes precisos" class="tip-top">
     <i class="fa-solid fa-faucet-drip" style="color:#3b82f6"></i> Caudales Globales
   </button>
   <div class="sep"></div>
-  <button class="btn btn-ghost" onclick="document.getElementById('modal-cloud').classList.add('open')">
+  <button class="btn btn-ghost" onclick="openCloudModal()" data-tip="Configura tu repositorio GitHub para enviar el protocolo compilado directamente al biorreactor">
     <i class="fa-solid fa-cloud" style="color:#6366f1"></i> Nube
   </button>
   <div class="sep"></div>
@@ -218,11 +278,20 @@ pre#gen-code{flex:1;overflow:auto;padding:12px;margin:0;font-family:var(--mono);
     <option value="C7">C7</option><option value="C8" selected>C8 (Recomendado)</option>
   </select>
   <div class="sep"></div>
-  <div class="safety-badge" id="safety-badge" onclick="openSafety()">
+  <div class="safety-badge" id="safety-badge" onclick="openSafety()" data-tip="Checklist de seguridad físico. Debes confirmarlo antes de compilar protocolos con temperatura u óptica. Haz clic para abrir." style="position:relative">
     <div class="safety-dot"></div>
     <span><i class="fa-solid fa-lock" style="font-size:9px;margin-right:2px"></i>Seguridad</span>
   </div>
   <div class="tb-right">
+    <div class="io-btns">
+      <button class="btn btn-ghost" onclick="exportExperiment()" data-tip="Guarda el experimento actual como archivo .chibio para compartirlo o cargarlo después" data-tip-pos="top"><i class="fa-solid fa-file-export" style="color:#10b981"></i> Exportar</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('import-file').click()" data-tip="Carga un archivo .chibio exportado previamente. Los bloques aparecerán en el canvas automáticamente" data-tip-pos="top"><i class="fa-solid fa-file-import" style="color:#60a5fa"></i> Importar</button>
+      <input type="file" id="import-file" accept=".chibio,.json" style="display:none" onchange="importExperiment(event)">
+    </div>
+    <div class="sep"></div>
+    <button class="btn btn-ghost" onclick="startTour()" data-tip="Tour interactivo paso a paso que explica cada sección de la interfaz" data-tip-pos="top"><i class="fa-solid fa-circle-question" style="color:var(--warn)"></i> Tour</button>    <div class="sep"></div>
+    <button class="btn btn-ghost" id="btn-undo" onclick="undo()" disabled data-tip="Deshacer última acción (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
+    <button class="btn btn-ghost" id="btn-redo" onclick="redo()" disabled data-tip="Rehacer acción deshecha (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i></button>
     <button class="btn btn-ghost" onclick="clearCanvas()"><i class="fa-solid fa-trash-can"></i> Limpiar</button>
     <button class="btn btn-accent" id="compile-btn" onclick="doCompile()"><i class="fa-solid fa-bolt"></i> Compilar FSM</button>
     <button class="btn btn-cloud" id="btn-send-cloud" onclick="sendToCloud()" disabled><i class="fa-solid fa-paper-plane"></i> Enviar a Biorreactor</button>
@@ -236,75 +305,75 @@ pre#gen-code{flex:1;overflow:auto;padding:12px;margin:0;font-family:var(--mono);
 <div class="palette" id="palette">
 
   <div class="cat"><i class="fa-solid fa-gear" style="color:var(--text3)"></i>Condiciones Iniciales</div>
-  <div class="pill" draggable="true" data-btype="init_temp" onclick="addBlock('init_temp')">
+  <div class="pill" draggable="true" data-btype="init_temp" onclick="addBlock('init_temp')" data-tip="Fija la temperatura objetivo del termostato al inicio del experimento. Solo puede usarse una vez. Rango: 0–50°C." >
     <div class="pi" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="fa-solid fa-temperature-half"></i></div>
     <div><div class="pn">Temperatura inicial</div><div class="pd">Setpoint del termostato</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="init_od" onclick="addBlock('init_od')">
+  <div class="pill" draggable="true" data-btype="init_od" onclick="addBlock('init_od')" data-tip="Define el OD (Densidad Óptica) objetivo para el turbidostato. Solo puede usarse una vez. El sensor mide la turbidez del cultivo.">
     <div class="pi" style="background:rgba(0,229,160,.12);color:#00e5a0"><i class="fa-solid fa-bullseye"></i></div>
     <div><div class="pn">OD objetivo inicial</div><div class="pd">Setpoint del turbidostato</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="init_stir" onclick="addBlock('init_stir')">
+  <div class="pill" draggable="true" data-btype="init_stir" onclick="addBlock('init_stir')" data-tip="Activa el agitador magnético al inicio. Valor entre 0 (parado) y 1 (máxima velocidad). 0.5 es la velocidad estándar para cultivos.">
     <div class="pi" style="background:rgba(251,191,36,.12);color:#fbbf24"><i class="fa-solid fa-fan"></i></div>
     <div><div class="pn">Agitación inicial</div><div class="pd">Velocidad del agitador</div></div>
   </div>
 
   <div class="cat"><i class="fa-solid fa-microchip" style="color:var(--text3)"></i>Hardware</div>
-  <div class="pill" draggable="true" data-btype="thermostat" onclick="addBlock('thermostat')">
+  <div class="pill" draggable="true" data-btype="thermostat" onclick="addBlock('thermostat')" data-tip="Cambia la temperatura objetivo en cualquier punto del protocolo. Requiere Checklist de Seguridad. Temperatura máxima: 50°C.">
     <div class="pi" style="background:rgba(239,68,68,.12);color:#ef4444"><i class="fa-solid fa-temperature-full"></i></div>
     <div><div class="pn">Fijar Termostato</div><div class="pd">Cambio directo (°C)</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="ramp_temp" onclick="addBlock('ramp_temp')">
+  <div class="pill" draggable="true" data-btype="ramp_temp" onclick="addBlock('ramp_temp')" data-tip="Sube o baja la temperatura gradualmente de un valor inicial a uno final en X minutos. Ideal para heat-shock o aclimatación.">
     <div class="pi" style="background:rgba(244,63,94,.12);color:#f43f5e"><i class="fa-solid fa-arrow-trend-up"></i></div>
     <div><div class="pn">Rampa Térmica</div><div class="pd">Ajuste gradual progresivo</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="led" onclick="addBlock('led')">
+  <div class="pill" draggable="true" data-btype="led" onclick="addBlock('led')" data-tip="Controla los LEDs de excitación (395–623nm) o el láser 650nm. Modos: encender indefinido, pulso por tiempo, o apagar. Potencia máxima recomendada: 0.5 para no quemar el disipador.">
     <div class="pi" style="background:rgba(251,191,36,.12);color:#fbbf24"><i class="fa-solid fa-lightbulb"></i></div>
     <div><div class="pn">Control LED</div><div class="pd">Pulsos o luz continua</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="uv" onclick="addBlock('uv')">
+  <div class="pill" draggable="true" data-btype="uv" onclick="addBlock('uv')" data-tip="Activa la luz UV para inducir estrés genotóxico o mutagénesis. Usar con mucho cuidado — potencias altas son irreversibles. Máx recomendado: 0.3 por períodos cortos.">
     <div class="pi" style="background:rgba(139,92,246,.12);color:#8b5cf6"><i class="fa-solid fa-radiation"></i></div>
     <div><div class="pn">Luz UV</div><div class="pd">Control de estrés</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="pump" onclick="addBlock('pump')">
+  <div class="pill" draggable="true" data-btype="pump" onclick="addBlock('pump')" data-tip="Activa una bomba durante N segundos. Pump1=entrada de medio, Pump2=salida/dilución, Pump3/4=auxiliares. La potencia negativa invierte el flujo. Cuidado con el volumen total.">
     <div class="pi" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="fa-solid fa-droplet"></i></div>
     <div><div class="pn">Dispensar Bomba</div><div class="pd">Inyección temporizada</div></div>
   </div>
 
   <div class="cat"><i class="fa-solid fa-sliders" style="color:var(--text3)"></i>Modos de Control</div>
-  <div class="pill" draggable="true" data-btype="turbidostat" onclick="addBlock('turbidostat')">
+  <div class="pill" draggable="true" data-btype="turbidostat" onclick="addBlock('turbidostat')" data-tip="Mantiene la densidad celular (OD) constante diluyendo automáticamente el cultivo con medio fresco. Ideal para evolución adaptativa. Solo un modo de control por experimento.">
     <div class="pi" style="background:rgba(34,211,238,.12);color:#22d3ee"><i class="fa-solid fa-chart-line"></i></div>
     <div><div class="pn">Turbidostato</div><div class="pd">Regulación automática OD</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="chemostat" onclick="addBlock('chemostat')">
+  <div class="pill" draggable="true" data-btype="chemostat" onclick="addBlock('chemostat')" data-tip="Mantiene una tasa de dilución constante (flujo de entrada y salida fijo). p1=tasa Pump1 entrada, p2=tasa Pump2 salida. p2 debe ser ligeramente mayor que p1.">
     <div class="pi" style="background:rgba(236,72,153,.12);color:#ec4899"><i class="fa-solid fa-circle-nodes"></i></div>
     <div><div class="pn">Quimiostato</div><div class="pd">Flujo continuo de medio</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="zigzag" onclick="addBlock('zigzag')">
+  <div class="pill" draggable="true" data-btype="zigzag" onclick="addBlock('zigzag')" data-tip="Alterna entre OD alto y bajo para estimar la tasa de crecimiento μ en tiempo real. Zig = amplitud de la oscilación en unidades OD. Activa el turbidostato automáticamente.">
     <div class="pi" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="fa-solid fa-wave-square"></i></div>
     <div><div class="pn">Zigzag</div><div class="pd">Estimar tasa de crecimiento</div></div>
   </div>
 
   <div class="cat"><i class="fa-solid fa-eye" style="color:var(--text3)"></i>Sensores</div>
-  <div class="pill" draggable="true" data-btype="measure_od" onclick="addBlock('measure_od')">
+  <div class="pill" draggable="true" data-btype="measure_od" onclick="addBlock('measure_od')" data-tip="Fuerza una lectura del sensor óptico. Pausa el agitador automáticamente 3 segundos para eliminar el ruido de la turbulencia y obtener una lectura limpia.">
     <div class="pi" style="background:rgba(0,229,160,.12);color:#00e5a0"><i class="fa-solid fa-microscope"></i></div>
     <div><div class="pn">Medir OD</div><div class="pd">Forzar lectura óptica</div></div>
   </div>
 
   <div class="cat"><i class="fa-solid fa-clock" style="color:var(--text3)"></i>Flujo y Lógica</div>
-  <div class="pill" draggable="true" data-btype="wait" onclick="addBlock('wait')">
+  <div class="pill" draggable="true" data-btype="wait" onclick="addBlock('wait')" data-tip="Pausa el protocolo por un tiempo. Minutos=basado en ciclos del FSM (seguro). Segundos=bloqueo real (máx 15s). Generaciones=unidad biológica basada en la tasa de crecimiento.">
     <div class="pi" style="background:rgba(100,116,139,.12);color:#94a3b8"><i class="fa-solid fa-hourglass-half"></i></div>
     <div><div class="pn">Esperar (Tiempo)</div><div class="pd">Min, Seg o Generaciones</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="loop" onclick="addBlock('loop')">
+  <div class="pill" draggable="true" data-btype="loop" onclick="addBlock('loop')" data-tip="Repite una secuencia de bloques N veces. Puedes anidar cualquier bloque dentro. Ideal para protocolos cíclicos como rondas de selección.">
     <div class="pi" style="background:rgba(245,158,11,.12);color:#f59e0b"><i class="fa-solid fa-repeat"></i></div>
     <div><div class="pn">Bucle</div><div class="pd">Repetir N veces</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="trigger" onclick="addBlock('trigger')">
+  <div class="pill" draggable="true" data-btype="trigger" onclick="addBlock('trigger')" data-tip="Ejecuta bloques solo cuando se cumple una condición (OD, temperatura, tasa de crecimiento, fluorescencia). Modo 'esperar' pausa hasta que se cumpla. Modo 'if' lo evalúa instantáneamente.">
     <div class="pi" style="background:rgba(248,113,113,.12);color:#f87171"><i class="fa-solid fa-bolt"></i></div>
     <div><div class="pn">Trigger Condicional</div><div class="pd">Reactivo a sensores</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="log" onclick="addBlock('log')">
+  <div class="pill" draggable="true" data-btype="log" onclick="addBlock('log')" data-tip="Imprime un mensaje en la consola del biorreactor durante la ejecución. Útil para marcar etapas del experimento y depurar el protocolo.">
     <div class="pi" style="background:rgba(16,185,129,.12);color:#10b981"><i class="fa-solid fa-terminal"></i></div>
     <div><div class="pn">Log en Consola</div><div class="pd">Imprimir mensaje</div></div>
   </div>
@@ -369,6 +438,25 @@ pre#gen-code{flex:1;overflow:auto;padding:12px;margin:0;font-family:var(--mono);
 
 <div id="toasts"></div>
 
+<!-- ══ TOUR OVERLAY ══════════════════════════════════════════ -->
+<div id="tour-overlay">
+  <div id="tour-backdrop"></div>
+  <div id="tour-highlight"></div>
+  <div id="tour-box">
+    <h4><i class="fa-solid fa-circle-play" style="flex-shrink:0"></i> <span id="tour-title"></span></h4>
+    <p id="tour-desc"></p>
+    <div class="tour-footer">
+      <span id="tour-step-count" style="font-size:11px;color:var(--text3);font-family:var(--mono)"></span>
+      <button class="tour-skip" onclick="endTour()">✕ Saltar</button>
+      <div class="tour-nav">
+        <button class="btn btn-ghost" id="tour-btn-prev" onclick="tourPrev()" style="font-size:11px;padding:4px 9px">← Atrás</button>
+        <button class="btn btn-accent" id="tour-btn-next" onclick="tourNext()" style="font-size:11px;padding:4px 9px">Siguiente →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <!-- Modal: Block picker -->
 <div class="moverlay" id="modal-picker" onclick="closePicker(event)">
   <div class="mbox">
@@ -402,15 +490,15 @@ pre#gen-code{flex:1;overflow:auto;padding:12px;margin:0;font-family:var(--mono);
   <div class="mbox">
     <h3><i class="fa-solid fa-cloud" style="color:#6366f1;margin-right:5px"></i>Configuración Cloud (GitHub)</h3>
     <p style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.6">
-      Ingresa tus credenciales. Se guardarán en tu navegador de forma segura.
+      Ingresa tus credenciales para enviar protocolos al biorreactor de forma remota.
     </p>
     <div style="display:flex;flex-direction:column;gap:8px;">
-      <div class="frow"><span class="flbl">Usuario GitHub</span><input type="text" id="gh-user" class="finp" placeholder="Ej: Tronex-54"></div>
-      <div class="frow"><span class="flbl">Repositorio</span><input type="text" id="gh-repo" class="finp" placeholder="Ej: ChiBio_Cloud"></div>
+      <div class="frow"><span class="flbl">Usuario GitHub</span><input type="text" id="gh-user" class="finp" placeholder="tu-usuario"></div>
+      <div class="frow"><span class="flbl">Repositorio</span><input type="text" id="gh-repo" class="finp" placeholder="ChiBio_Cloud"></div>
       <div class="frow"><span class="flbl">Token (PAT)</span><input type="password" id="gh-token" class="finp" placeholder="ghp_..."></div>
     </div>
     <div class="mfooter">
-      <button class="btn btn-accent" onclick="saveCloudSettings()"><i class="fa-solid fa-check"></i> Guardar</button>
+      <button class="btn btn-accent" onclick="saveCloudConfig()"><i class="fa-solid fa-check"></i> Guardar</button>
     </div>
   </div>
 </div>
@@ -498,24 +586,21 @@ function savePumpModal() {
     refresh(); toast('Caudales globales actualizados', 'ok');
 }
 
-// ── Guardar datos de la nube en LocalStorage ──
-function saveCloudSettings() {
-    localStorage.setItem('cb_user', document.getElementById('gh-user').value.trim());
-    localStorage.setItem('cb_repo', document.getElementById('gh-repo').value.trim());
-    localStorage.setItem('cb_token', document.getElementById('gh-token').value.trim());
-    document.getElementById('modal-cloud').classList.remove('open');
-    toast('Configuración Cloud guardada en el navegador', 'ok');
+// Cloud config — save/load from localStorage (never in source code)
+function openCloudModal(){
+  document.getElementById('gh-user').value = localStorage.getItem('chibio_gh_user')||'';
+  document.getElementById('gh-repo').value = localStorage.getItem('chibio_gh_repo')||'';
+  document.getElementById('gh-token').value = localStorage.getItem('chibio_gh_token')||'';
+  document.getElementById('modal-cloud').classList.add('open');
 }
-
-// ── Cargar datos al abrir la página ──
-window.addEventListener('DOMContentLoaded', () => {
-    if(localStorage.getItem('cb_user')) document.getElementById('gh-user').value = localStorage.getItem('cb_user');
-    if(localStorage.getItem('cb_repo')) document.getElementById('gh-repo').value = localStorage.getItem('cb_repo');
-    if(localStorage.getItem('cb_token')) document.getElementById('gh-token').value = localStorage.getItem('cb_token');
-});
-
-function openSafety(){
-  cs1=false; cs2=false; cs3=false;
+function saveCloudConfig(){
+  localStorage.setItem('chibio_gh_user', document.getElementById('gh-user').value.trim());
+  localStorage.setItem('chibio_gh_repo', document.getElementById('gh-repo').value.trim());
+  localStorage.setItem('chibio_gh_token', document.getElementById('gh-token').value.trim());
+  document.getElementById('modal-cloud').classList.remove('open');
+  toast('Configuración Cloud guardada de forma segura', 'ok');
+}
+function openSafety(){  cs1=false; cs2=false; cs3=false;
   ['cs1','cs2','cs3'].forEach(id=>document.getElementById(id).classList.remove('done'));
   ['cc1','cc2','cc3'].forEach(id=>{ document.getElementById(id).textContent=''; });
   
@@ -669,7 +754,61 @@ function addBlock(type, arr){
     }
     (arr||AST).push(mkNode(type)); refresh(); 
 }
-function refresh(){ renderCanvas(); updateVol(); updateCount(); checkSingletons(); checkSafetyRequirements(); document.getElementById('btn-send-cloud').disabled = true; }
+function refresh(){ 
+  _historySave();
+  renderCanvas(); updateVol(); updateCount(); checkSingletons(); checkSafetyRequirements(); 
+  document.getElementById('btn-send-cloud').disabled = true;
+  _historyUpdateButtons();
+}
+
+// ── UNDO / REDO ───────────────────────────────────────────────
+const _undoStack = [];   // snapshots anteriores
+const _redoStack = [];   // snapshots para rehacer
+let   _historyLock = false; // evita que undo/redo se guarden a sí mismos
+
+function _historySave(){
+  if(_historyLock) return;
+  _undoStack.push(JSON.stringify({ast: AST, nc: nodeCounter}));
+  if(_undoStack.length > 50) _undoStack.shift(); // máximo 50 pasos
+  _redoStack.length = 0; // cualquier acción nueva borra el redo
+}
+
+function undo(){
+  if(_undoStack.length < 2){ toast('Nada que deshacer', 'warn'); return; }
+  _redoStack.push(_undoStack.pop()); // mueve el estado actual a redo
+  const snap = JSON.parse(_undoStack[_undoStack.length - 1]);
+  _historyLock = true;
+  AST.length = 0;
+  snap.ast.forEach(n => AST.push(n));
+  nodeCounter = snap.nc;
+  renderCanvas(); updateVol(); updateCount(); checkSingletons(); checkSafetyRequirements();
+  document.getElementById('btn-send-cloud').disabled = true;
+  _historyLock = false;
+  _historyUpdateButtons();
+  toast('Deshacer ✓', 'ok');
+}
+
+function redo(){
+  if(!_redoStack.length){ toast('Nada que rehacer', 'warn'); return; }
+  const snap = JSON.parse(_redoStack.pop());
+  _undoStack.push(JSON.stringify({ast: AST, nc: nodeCounter}));
+  _historyLock = true;
+  AST.length = 0;
+  snap.ast.forEach(n => AST.push(n));
+  nodeCounter = snap.nc;
+  renderCanvas(); updateVol(); updateCount(); checkSingletons(); checkSafetyRequirements();
+  document.getElementById('btn-send-cloud').disabled = true;
+  _historyLock = false;
+  _historyUpdateButtons();
+  toast('Rehacer ✓', 'ok');
+}
+
+function _historyUpdateButtons(){
+  const u = document.getElementById('btn-undo');
+  const r = document.getElementById('btn-redo');
+  if(u) u.disabled = _undoStack.length < 2;
+  if(r) r.disabled = _redoStack.length === 0;
+}
 
 // ── Render ────────────────────────────────────────────────
 function renderCanvas(){
@@ -1132,14 +1271,14 @@ function compileFSM(nodes, M, progName) {
 
 // ── ENVÍO CLOUD A GITHUB ─────────────────────────────────
 async function sendToCloud() {
-    const user = document.getElementById('gh-user').value.trim();
-    const repo = document.getElementById('gh-repo').value.trim();
-    const token = document.getElementById('gh-token').value.trim();
+    const user = (localStorage.getItem('chibio_gh_user') || document.getElementById('gh-user').value).trim();
+    const repo = (localStorage.getItem('chibio_gh_repo') || document.getElementById('gh-repo').value).trim();
+    const token = (localStorage.getItem('chibio_gh_token') || document.getElementById('gh-token').value).trim();
     const url = `https://api.github.com/repos/${user}/${repo}/contents/protocolo.py`;
 
     if(!user || !token || !repo) { 
         toast("Configura la Nube primero", "warn"); 
-        document.getElementById('modal-cloud').classList.add('open'); 
+        openCloudModal();
         return; 
     }
     if(!rawPythonCode) { toast("Compila el código primero", "warn"); return; }
@@ -1184,12 +1323,338 @@ function highlight(code){
 }
 function copyCode(){ navigator.clipboard.writeText(rawPythonCode).then(()=>toast('Código copiado ✓','ok')); }
 
+// ── EXPORT / IMPORT ───────────────────────────────────────────
+function exportExperiment(){
+  if(!AST.length){ toast('El canvas está vacío', 'warn'); return; }
+  const suggestion = `protocolo_${getM()}`;
+  const input = window.prompt('Nombre del archivo (sin extensión):', suggestion);
+  if(input === null) return;
+  const name = (input.trim() || suggestion).replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  const data = {
+    version: '6.8',
+    date: new Date().toISOString(),
+    reactor: getM(),
+    program: getProg(),
+    pumps: globalPumps,
+    ast: AST
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name}.chibio`;
+  a.click();
+  toast(`"${name}.chibio" exportado ✓`, 'ok');
+  addMsg('ok','📦',`Experimento exportado como <strong>${name}.chibio</strong> (${AST.length} bloques).`);
+}
+
+function importExperiment(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if(!data.ast || !Array.isArray(data.ast)) throw new Error('Formato inválido');
+      if(!confirm(`¿Cargar experimento "${file.name}"?\nEsto reemplazará el canvas actual (${AST.length} bloques).`)) return;
+      
+      AST.length = 0;
+      nodeCounter = 0;
+      // Reassign IDs to avoid collisions
+      function reassignIds(arr){
+        for(const n of arr){ n.id = uid(); if(n.children) reassignIds(n.children); }
+      }
+      reassignIds(data.ast);
+      data.ast.forEach(n => AST.push(n));
+      if(data.pumps) Object.assign(globalPumps, data.pumps);
+      
+      // Restore reactor/program if saved
+      if(data.reactor) document.getElementById('dev-sel').value = data.reactor;
+      if(data.program) document.getElementById('prog-sel').value = data.program;
+      
+      refresh();
+      toast(`Experimento cargado — ${AST.length} bloques ✓`, 'ok');
+      addMsg('ok','📂',`Importado: <strong>${file.name}</strong> — ${AST.length} bloques restaurados en el canvas.`);
+    } catch(err){
+      toast('Error al importar: archivo inválido', 'err');
+      addMsg('err','❌',`No se pudo importar: ${err.message}`);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = ''; // Reset so same file can be reimported
+}
+
+// ── AI ASSISTANT (GEMINI) ─────────────────────────────────────
+
+// ── GUIDED TOUR ───────────────────────────────────────────────
+const TOUR_STEPS = [
+  { sel:'.logo', pos:'bottom-right',
+    title:'¡Bienvenido a Chi.Bio Master Architect!',
+    desc:'Esta herramienta te permite diseñar protocolos de biorreactor de forma visual, sin escribir código. Construyes el experimento bloque a bloque y al final genera el código Python listo para ejecutar.' },
+  { sel:'.palette', pos:'right',
+    title:'Panel de Bloques',
+    desc:'Aquí viven todos los bloques disponibles, organizados por categoría. Haz clic en cualquiera o arrástralo al canvas del centro para añadirlo a tu protocolo.' },
+  { sel:'.pill[data-btype="init_temp"]', pos:'right',
+    title:'Condiciones Iniciales',
+    desc:'Estos tres bloques definen el punto de partida del experimento — temperatura, OD objetivo y agitación. Solo puedes usar cada uno una vez, y siempre van al principio.' },
+  { sel:'.pill[data-btype="thermostat"]', pos:'right',
+    title:'Hardware — Temperatura y Luz',
+    desc:'Controlan el hardware directamente durante el experimento: cambiar temperatura, hacer rampas graduales, encender LEDs de distintas longitudes de onda, o aplicar luz UV.' },
+  { sel:'.pill[data-btype="turbidostat"]', pos:'right',
+    title:'Modos de Control Continuo',
+    desc:'Son los motores del experimento, los que mantienen una condición activa de forma continua. Solo puedes activar uno a la vez — si eliges uno, los otros dos se desactivan automáticamente.' },
+  { sel:'.pill[data-btype="trigger"]', pos:'right',
+    title:'Lógica Condicional y Bucles',
+    desc:'Los bloques más poderosos. El Trigger reacciona a datos del sensor en tiempo real para disparar acciones. El Bucle repite una secuencia cuantas veces necesites. Puedes combinarlos.' },
+  { sel:'.canvas-panel', pos:'left',
+    title:'Canvas — Tu Protocolo',
+    desc:'Aquí construyes el experimento. Los bloques se ejecutan de arriba a abajo, en orden. Puedes arrastrarlos para reordenarlos, duplicarlos o eliminarlos en cualquier momento.' },
+  { sel:'.vol-bar-outer', pos:'top',
+    title:'Volumen Estimado',
+    desc:'Lleva la cuenta del volumen neto que inyectarán las bombas a lo largo del protocolo. Si superas los 25 ml — la capacidad del tubo — el compilador bloqueará el experimento.' },
+  { sel:'#dev-sel', pos:'bottom-left',
+    title:'Reactor y Destino',
+    desc:'Elige qué módulo del Chi.Bio (M0–M7) ejecutará el protocolo y en qué ranura de programa (C1–C8) se cargará. C8 es la ranura recomendada para experimentos de usuario.' },
+  { sel:'#safety-badge', pos:'bottom-left',
+    title:'Checklist de Seguridad',
+    desc:'Antes de compilar, confirmas aquí las condiciones físicas del biorreactor. Es obligatorio para protocolos con temperatura u óptica, para evitar daños al hardware.' },
+  { sel:'#compile-btn', pos:'bottom-left',
+    title:'Compilar FSM',
+    desc:'Convierte el protocolo visual en código Python real. El compilador valida errores de seguridad y límites de hardware antes de generar el código — si hay problemas, te los muestra en la consola.' },
+  { sel:'#btn-send-cloud', pos:'bottom-left',
+    title:'Enviar al Biorreactor',
+    desc:'Una vez compilado, este botón sube el código directamente al repositorio GitHub que lee el Chi.Bio. El reactor detecta el cambio y empieza a ejecutar el protocolo automáticamente.' },
+  { sel:'.rpanel', pos:'left',
+    title:'Consola y Código Python',
+    desc:'La Consola muestra errores y advertencias de validación en tiempo real. La pestaña Python FSM muestra el código generado con resaltado de sintaxis, listo para copiar o enviar.' },
+  { sel:'.io-btns', pos:'bottom-left',
+    title:'Exportar e Importar',
+    desc:'Guarda tu experimento como archivo .chibio para compartirlo o retomarlo después. Al importarlo, todos los bloques reaparecen en el canvas exactamente como los dejaste.' },
+];
+
+let tourStep = 0;
+let _tourActive = false;
+
+function startTour(){
+  localStorage.setItem('chibio_tour_done','1');
+  tourStep = 0;
+  _tourActive = true;
+  document.getElementById('tour-overlay').classList.add('active');
+  renderTourStep();
+}
+
+function renderTourStep(){
+  if(!_tourActive) return;
+  const step = TOUR_STEPS[tourStep];
+  if(!step){ endTour(); return; }
+
+  document.getElementById('tour-title').textContent = step.title;
+  document.getElementById('tour-desc').textContent  = step.desc;
+
+  // Buttons
+  const isLast  = tourStep === TOUR_STEPS.length-1;
+  const isFirst = tourStep === 0;
+  document.getElementById('tour-btn-next').textContent = isLast ? '¡Listo! 🎉' : 'Siguiente →';
+  document.getElementById('tour-btn-prev').style.visibility = isFirst ? 'hidden' : 'visible';
+  document.getElementById('tour-step-count').textContent = (tourStep+1) + ' / ' + TOUR_STEPS.length;
+
+  // Highlight + box
+  const el  = step.sel ? document.querySelector(step.sel) : null;
+  const hl  = document.getElementById('tour-highlight');
+  const box = document.getElementById('tour-box');
+  let rect  = null;
+
+  if(el){
+    rect = el.getBoundingClientRect();
+    if(rect.width > 0 && rect.height > 0){
+      const PAD = 7;
+      hl.style.display = 'block';
+      hl.style.left    = (rect.left   - PAD) + 'px';
+      hl.style.top     = (rect.top    - PAD) + 'px';
+      hl.style.width   = (rect.width  + PAD*2) + 'px';
+      hl.style.height  = (rect.height + PAD*2) + 'px';
+    } else {
+      hl.style.display = 'none';
+      rect = null;
+    }
+  } else {
+    hl.style.display = 'none';
+  }
+  _positionBox(box, rect, step.pos || 'right');
+}
+
+function _positionBox(box, rect, pos){
+  const BW=340, BH=240, M=16;
+  const VW=window.innerWidth, VH=window.innerHeight;
+  let l, t;
+  if(!rect){ l=(VW-BW)/2; t=(VH-BH)/2; }
+  else{
+    switch(pos){
+      case 'right':        l=rect.right+M;   t=rect.top;       break;
+      case 'left':         l=rect.left-BW-M; t=rect.top;       break;
+      case 'top':          l=rect.left;       t=rect.top-BH-M;  break;
+      case 'bottom':       l=rect.left;       t=rect.bottom+M;  break;
+      case 'bottom-left':  l=rect.right-BW;   t=rect.bottom+M;  break;
+      case 'bottom-right': l=rect.left;       t=rect.bottom+M;  break;
+      default:             l=rect.right+M;   t=rect.top;
+    }
+  }
+  l = Math.max(10, Math.min(l, VW-BW-10));
+  t = Math.max(10, Math.min(t, VH-BH-10));
+  box.style.left=l+'px'; box.style.top=t+'px';
+}
+
+function tourNext(){
+  if(tourStep >= TOUR_STEPS.length-1){ endTour(); return; }
+  tourStep++; renderTourStep();
+}
+function tourPrev(){
+  if(tourStep <= 0) return;
+  tourStep--; renderTourStep();
+}
+function endTour(){
+  _tourActive = false;
+  document.getElementById('tour-overlay').classList.remove('active');
+  const hl = document.getElementById('tour-highlight');
+  hl.style.display='none';
+}
+
+if(!localStorage.getItem('chibio_tour_done')){ setTimeout(startTour, 900); }
+
 function clearConsole(){ document.getElementById('console-wrap').innerHTML='<div class="console-empty-msg"><i class="fa-solid fa-shield-halved"></i><span>Motor M.E. listo.</span></div>'; }
 function addMsg(type, icon, html){ const ce=document.getElementById('console-wrap').querySelector('.console-empty-msg'); if(ce) ce.remove(); const d=document.createElement('div'); d.className='cmsg '+type; d.innerHTML=icon+' '+html; document.getElementById('console-wrap').appendChild(d); }
 function switchTab(name){ ['console','code'].forEach(t=>{ document.getElementById('rpane-'+t).classList.toggle('on',t===name); document.getElementById('rtab-'+t).classList.toggle('on',t===name); }); }
 function toast(msg, type){ const ct=document.getElementById('toasts'); const d=document.createElement('div'); d.className='toast '+type; const ic={ok:'fa-check-circle',err:'fa-xmark-circle',warn:'fa-triangle-exclamation'}; d.innerHTML='<i class="fa-solid '+(ic[type]||'fa-info-circle')+'"></i> '+msg; ct.appendChild(d); setTimeout(()=>d.remove(),3000); }
 function clearCanvas(){ if(!AST.length) return; AST.length=0; nodeCounter=0; refresh(); document.getElementById('gen-code').innerHTML='<span class="py-cm"># Canvas limpiado.</span>'; document.getElementById('gen-code').dataset.raw=''; rawPythonCode=''; document.getElementById('code-status').textContent='Sin compilar'; document.getElementById('btn-send-cloud').disabled = true; toast('Canvas limpiado','warn'); }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;'); }
+
+// ── JS TOOLTIP SYSTEM ─────────────────────────────────────────
+(function(){
+  const tip = document.createElement('div');
+  tip.id = 'tooltip-el';
+  document.body.appendChild(tip);
+  let _tid = null;
+
+  function show(el){
+    const text = el.getAttribute('data-tip');
+    if(!text) return;
+    clearTimeout(_tid);
+    tip.textContent = text;
+    tip.style.opacity = '0';
+    tip.style.display = 'block';
+
+    const r  = el.getBoundingClientRect();
+    const TW = 220, TH = tip.offsetHeight || 80;
+    const VW = window.innerWidth, VH = window.innerHeight;
+    const M  = 10;
+    let l, t;
+
+    // Default: right of element
+    l = r.right + M;
+    t = r.top + (r.height - TH) / 2;
+
+    // If would overflow right → try left
+    if(l + TW > VW - 4) { l = r.left - TW - M; }
+    // If still off-screen left → put below
+    if(l < 4) { l = r.left; t = r.bottom + M; }
+    // Clamp vertical
+    t = Math.max(6, Math.min(t, VH - TH - 6));
+    // Clamp horizontal
+    l = Math.max(6, Math.min(l, VW - TW - 6));
+
+    tip.style.left  = l + 'px';
+    tip.style.top   = t + 'px';
+    tip.style.width = TW + 'px';
+    _tid = setTimeout(()=>{ tip.style.opacity='1'; }, 120);
+  }
+
+  function hide(){
+    clearTimeout(_tid);
+    tip.style.opacity = '0';
+    _tid = setTimeout(()=>{ tip.style.display='none'; }, 160);
+  }
+
+  // Event delegation — works for all current and future [data-tip] elements
+  document.addEventListener('mouseover', e=>{
+    const el = e.target.closest('[data-tip]');
+    if(el) show(el);
+  });
+  document.addEventListener('mouseout', e=>{
+    const el = e.target.closest('[data-tip]');
+    if(el) hide();
+  });
+  // Hide on drag start to prevent dragging tooltip
+  document.addEventListener('dragstart', ()=>{ tip.style.opacity='0'; tip.style.display='none'; });
+})();
+
+// ── BLOCK SELECTION ───────────────────────────────────────────
+// Tracks which block is "selected" for keyboard shortcuts
+let _selectedId = null;
+document.addEventListener('click', e => {
+  const cb = e.target.closest('.cb');
+  if(cb){
+    document.querySelectorAll('.cb.selected').forEach(el => el.classList.remove('selected'));
+    const id = cb.id.replace('cb-','');
+    if(_selectedId === id){ _selectedId = null; } // clic de nuevo deselecciona
+    else { _selectedId = id; cb.classList.add('selected'); }
+  } else {
+    // clic fuera de un bloque deselecciona
+    if(!e.target.closest('.cba') && !e.target.closest('.moverlay')){
+      _selectedId = null;
+      document.querySelectorAll('.cb.selected').forEach(el => el.classList.remove('selected'));
+    }
+  }
+});
+
+// ── KEYBOARD SHORTCUTS ────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement?.tagName;
+  const inField = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+  // Ctrl+Z — Deshacer (funciona siempre)
+  if(e.ctrlKey && !e.shiftKey && e.key === 'z'){ e.preventDefault(); undo(); return; }
+
+  // Ctrl+Y o Ctrl+Shift+Z — Rehacer (funciona siempre)
+  if((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')){ e.preventDefault(); redo(); return; }
+
+  if(inField) return; // el resto solo aplica fuera de campos de texto
+
+  // Supr / Backspace — eliminar bloque seleccionado
+  if((e.key === 'Delete' || e.key === 'Backspace') && _selectedId){
+    e.preventDefault();
+    delNode(_selectedId); _selectedId = null; refresh();
+    toast('Bloque eliminado', 'warn');
+    return;
+  }
+
+  // Ctrl+D — duplicar bloque seleccionado
+  if(e.ctrlKey && e.key === 'd' && _selectedId){
+    e.preventDefault();
+    const found = findNode(_selectedId);
+    if(found){
+      const clone = cloneNodeDeep(found.node);
+      const idx = found.arr.indexOf(found.node);
+      found.arr.splice(idx + 1, 0, clone);
+      refresh(); toast('Bloque duplicado ✓', 'ok');
+    }
+    return;
+  }
+
+  // Flecha arriba — subir bloque seleccionado
+  if(e.key === 'ArrowUp' && _selectedId){
+    e.preventDefault(); moveNode(_selectedId, -1); refresh(); return;
+  }
+
+  // Flecha abajo — bajar bloque seleccionado
+  if(e.key === 'ArrowDown' && _selectedId){
+    e.preventDefault(); moveNode(_selectedId, 1); refresh(); return;
+  }
+
+  // Escape — deseleccionar
+  if(e.key === 'Escape'){
+    _selectedId = null;
+    document.querySelectorAll('.cb.selected').forEach(el => el.classList.remove('selected'));
+  }
+});
 
 refresh();
 </script>
