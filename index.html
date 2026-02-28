@@ -327,7 +327,7 @@ pre#gen-code{flex:1;overflow:auto;padding:12px;margin:0;font-family:var(--mono);
     <div class="pi" style="background:rgba(244,63,94,.12);color:#f43f5e"><i class="fa-solid fa-arrow-trend-up"></i></div>
     <div><div class="pn">Rampa Térmica</div><div class="pd">Ajuste gradual progresivo</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="led" onclick="addBlock('led')" data-tip="Controla los LEDs de excitación (395–623nm) o el láser 650nm. Modos: encender indefinido, pulso por tiempo, o apagar. Potencia máxima recomendada: 0.5 para no quemar el disipador.">
+  <div class="pill" draggable="true" data-btype="led" onclick="addBlock('led')" data-tip="Controla los LEDs de excitación (395–623nm) o el láser 650nm.Potencia máxima recomendada: 0.8 para no quemar el disipador.">
     <div class="pi" style="background:rgba(251,191,36,.12);color:#fbbf24"><i class="fa-solid fa-lightbulb"></i></div>
     <div><div class="pn">Control LED</div><div class="pd">Pulsos o luz continua</div></div>
   </div>
@@ -335,7 +335,7 @@ pre#gen-code{flex:1;overflow:auto;padding:12px;margin:0;font-family:var(--mono);
     <div class="pi" style="background:rgba(139,92,246,.12);color:#8b5cf6"><i class="fa-solid fa-radiation"></i></div>
     <div><div class="pn">Luz UV</div><div class="pd">Control de estrés</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="pump" onclick="addBlock('pump')" data-tip="Activa una bomba durante N segundos. Pump1=entrada de medio, Pump2=salida/dilución, Pump3/4=auxiliares. La potencia negativa invierte el flujo. Cuidado con el volumen total.">
+  <div class="pill" draggable="true" data-btype="pump" onclick="addBlock('pump')" data-tip="Activa una bomba durante N segundos. La potencia negativa invierte el flujo. Cuidado con el volumen total.">
     <div class="pi" style="background:rgba(59,130,246,.12);color:#3b82f6"><i class="fa-solid fa-droplet"></i></div>
     <div><div class="pn">Dispensar Bomba</div><div class="pd">Inyección temporizada</div></div>
   </div>
@@ -345,7 +345,7 @@ pre#gen-code{flex:1;overflow:auto;padding:12px;margin:0;font-family:var(--mono);
     <div class="pi" style="background:rgba(34,211,238,.12);color:#22d3ee"><i class="fa-solid fa-chart-line"></i></div>
     <div><div class="pn">Turbidostato</div><div class="pd">Regulación automática OD</div></div>
   </div>
-  <div class="pill" draggable="true" data-btype="chemostat" onclick="addBlock('chemostat')" data-tip="Mantiene una tasa de dilución constante (flujo de entrada y salida fijo). p1=tasa Pump1 entrada, p2=tasa Pump2 salida. p2 debe ser ligeramente mayor que p1.">
+  <div class="pill" draggable="true" data-btype="chemostat" onclick="addBlock('chemostat')" data-tip="Mantiene una tasa de dilución constante (flujo de entrada y salida fijo).">
     <div class="pi" style="background:rgba(236,72,153,.12);color:#ec4899"><i class="fa-solid fa-circle-nodes"></i></div>
     <div><div class="pn">Quimiostato</div><div class="pd">Flujo continuo de medio</div></div>
   </div>
